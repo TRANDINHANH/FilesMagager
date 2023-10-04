@@ -23,7 +23,7 @@
                 <div class="upload-container d-flex">
                     <div class="upload-images">
                         <label class="label">
-                            <form action="/upload" method="POST" enctype="multipart/form-data"></form>
+                            <form id="form-upload" action="/upload" method="POST" enctype="multipart/form-data"></form>
                                 <input type="file" required multiple="multiple" name="fileimage" id="fileimage" class="fileimage none" accept=".png,.jpg,.jpeg,.gif,.bmp,.svg" onchange="uploadFiles()"/>
                                 <span>Chọn tệp</span>
                             </form>
@@ -54,6 +54,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
     <script type="text/javascript" src="/zTree_v3-master/js/jquery-1.4.4.min.js"></script>
   <script type="text/javascript" src="/zTree_v3-master/js/jquery.ztree.core.js"></script>
+  <script src="/socket.io-file-client/socket.io-file-client.js"></script>
     <script type='text/javascript' src='../js/index.js'></script>
 
 </body>

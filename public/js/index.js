@@ -1,4 +1,6 @@
 const socket = io.connect('http://localhost:3005'); // Điều chỉnh địa chỉ máy chủ và cổng của bạn
+var uploader = new SocketIOFileClient(socket);
+
 var zTree;
 var zNodes;
 var setting = {
@@ -8,10 +10,7 @@ var setting = {
         }
     }
 };
-    // Lắng nghe sự kiện từ máy chủ (ví dụ: khi tải lên hoàn thành)
-    socket.on('uploadComplete', (message) => {
-        alert(message); // Hiển thị thông báo khi tải lên hoàn thành
-    });
+
 
     // Lắng nghe sự kiện để nhận dữ liệu từ máy chủ (ví dụ: danh sách tệp ảnh)
     socket.on('nodeList', (data) => {
@@ -21,17 +20,35 @@ var setting = {
         $.fn.zTree.init($("#treeDemo"), setting, zNodes);
     });
 
-    // Hàm xử lý tải lên tệp tin
+    uploader.on('start', function(fileInfo) {
+        console.log('Bắt đầu tải lên', fileInfo);
+    });
+
+    uploader.on('stream', function(fileInfo) {
+        console.log('Đang tải lên... đã gửi %d byte.', fileInfo.sent);
+    });
+
+    uploader.on('complete', function(fileInfo) {
+        console.log('Tải lên hoàn tất', fileInfo);
+    });
+
+    uploader.on('error', function(err) {
+        console.log('Lỗi!', err);
+    });
+
+    uploader.on('abort', function(fileInfo) {
+        console.log('Đã hủy: ', fileInfo);
+    });
+
     function uploadFiles() {
-        const fileInput = document.getElementById('fileimage');
-        const formData = new FormData();
-        for (const file of fileInput.files) {
-            formData.append('files', file);
-        }
-
-        // Gửi yêu cầu tải lên đến máy chủ qua WebSocket
-        socket.emit('uploadRequest', formData);
-
-        // Xóa các tệp đã chọn để tải lên
-        fileInput.value = '';
-    }
+        var fileEl = document.getElementById('fileimage');
+         uploader.upload(fileEl, {
+            data: {
+                upload_year: (new Date()).getFullYear(),
+                upload_month: (new Date()).getMonth() + 1,
+                upload_day: (new Date()).getDate(),
+                upload_time: (new Date()).getHours() + ':' + (new Date()).getMinutes() + ':' + (new Date()).getSeconds(),
+                upload_dir: (new Date()).getFullYear() + '/' + ((new Date()).getMonth() + 1) + '/' + (new Date()).getDate()
+            }
+        });
+    };
