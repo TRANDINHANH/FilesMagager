@@ -17,8 +17,9 @@ main{
 }
 .tree-navigation{
     border-right: 1px solid #0d5da9;
-    height: 30px;    
-    margin: auto;
+       
+    margin-top: 20px;
+    margin-left: 20px;
     justify-content: center;
     
 }
