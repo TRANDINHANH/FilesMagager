@@ -17,7 +17,7 @@ main{
 }
 .tree-navigation{
     border-right: 1px solid #0d5da9;
-       
+    overflow-y: auto;
     margin-top: 20px;
     margin-left: 20px;
     justify-content: center;
@@ -131,3 +131,7 @@ label.label input[type="file"] {
     width: 20px;
     height: 20px;
   } 
+  .img-thumbnail-container {
+    max-width: 150px; /* Điều chỉnh kích thước tối đa của div */
+    text-align: center; /* Canh giữa ảnh trong div */
+}

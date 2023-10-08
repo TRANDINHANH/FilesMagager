@@ -3,17 +3,40 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var SocketIOFile = require('socket.io-file');
 const fs = require('fs');
-
+const path = require('path');
 const express = require('express');
 
 const port = 3005;
 
+function getDirectoryStructure(dirPath, nodeName) {
+    let structure = { name: nodeName, children: [] };
+    let files = fs.readdirSync(dirPath);
 
-const filePath = './file_uploads/tree_node_list.json';
+    files.forEach(file => {
+        let fullPath = path.join(dirPath, file);
+        let stats = fs.statSync(fullPath);
+
+        if (stats.isDirectory()) {
+            structure.children.push(getDirectoryStructure(fullPath, file));
+        }
+    });
+
+    return structure;
+}
+let treeStructure = getDirectoryStructure('./file_uploads/images', 'images');
+function saveTreeStructure() {
+    fs.writeFile('./file_uploads/tree_node_list.json', JSON.stringify(treeStructure), 'utf8', (err) => {
+        if (err) {
+            console.error('Lỗi khi ghi tệp JSON:', err);
+        }
+    });
+}
+const filePathTreeNode = './file_uploads/tree_node_list.json';
+
 
 let nodeList = null;
 
-fs.readFile(filePath, 'utf8', (err, data) => {
+fs.readFile(filePathTreeNode, 'utf8', (err, data) => {
     if (err) {
         console.error('Lỗi khi đọc tệp JSON:', err);
         return;
@@ -31,15 +54,59 @@ fs.readFile(filePath, 'utf8', (err, data) => {
 app.use(express.static('node_modules'));
 app.use(express.static('zTree_v3-master'));
 app.use(express.static('public'));
+app.use('/get-image', express.static('file_uploads/images'));
 
 app.get('/', (req, res) => {
+    saveTreeStructure();
     res.sendFile(__dirname + '/public/views/index.html');
 });
+
+app.get('/images/:year/:month/:day', (req, res) => {
+    let dirPath = path.join('./file_uploads/images', req.params.year, req.params.month, req.params.day);
+    fs.readdir(dirPath, (err, files) => {
+        if (err) {
+            res.status(500).send('Lỗi khi đọc thư mục');
+            return;
+        }
+
+        // Lọc ra các file ảnh
+        let imageFiles = files.filter(file => {
+            let fullPath = path.join(dirPath, file);
+            let stats = fs.statSync(fullPath);
+            return !stats.isDirectory() && ['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(file).toLowerCase());
+        });
+
+        // Phân trang
+        let page = parseInt(req.query.page) || 1;
+        let pageSize = 10;
+        let paginatedFiles = imageFiles.slice((page - 1) * pageSize, page * pageSize);
+
+        res.json({
+            total: imageFiles.length,
+            images: paginatedFiles
+        });
+    });
+});
+
+// app.get('/get-image/:filename', (req, res) => {
+//     let imagePath = 'file_uploads/images/' + req.params.filename;
+//     readFile(imagePath, (err, data) => {
+//         if (err) {
+//             res.status(500).send('Lỗi khi đọc tệp ảnh');
+//             console.error(err);
+//             return;
+//         }
+
+//         res.writeHead(200, { 'Content-Type': 'image/jpeg, image/jpg, image/png, image/gif' });
+//         res.end(data);
+//     });
+// });
 
 
 // Xử lý tải lên
 io.on('connection', (socket) => {
     console.log('Socket connected.');
+    console.log(treeStructure);
     if (nodeList) {
         socket.emit('nodeList', nodeList);
     }
@@ -63,11 +130,6 @@ io.on('connection', (socket) => {
 
     uploader.on('complete', (fileInfo) => {
         console.log('Upload Complete.');
-        console.log(fileInfo);
-        console.log(fileInfo.data.upload_year);
-        console.log(fileInfo.data.upload_month);
-        console.log(fileInfo.data.upload_day);
-        console.log(fileInfo.data.upload_time);
     });
 
     uploader.on('error', (err) => {
