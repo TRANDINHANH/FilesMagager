@@ -7,7 +7,8 @@
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "socket.io-file": "^2.0.31",
-    "socket.io-file-client": "^2.0.2"
+    "socket.io-file-client": "^2.0.2",
+    "socketio-file-upload": "^0.7.3"
   },
   "name": "file-manager",
   "version": "1.0.0",

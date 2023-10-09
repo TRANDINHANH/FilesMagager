@@ -111,7 +111,8 @@ label.label input[type="file"] {
 
   .images-grid-container{
     width: 75vw;
-    height: 100vh;
+    height: auto;
+    margin-bottom: 80px;  
     padding: 10px;
   }
   .file-box{
@@ -134,4 +135,8 @@ label.label input[type="file"] {
   .img-thumbnail-container {
     max-width: 150px; /* Điều chỉnh kích thước tối đa của div */
     text-align: center; /* Canh giữa ảnh trong div */
+}
+.paginationjs{
+  justify-content: center;
+  align-items: center;
 }

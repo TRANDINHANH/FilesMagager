@@ -1,4 +1,4 @@
-const socket = io('http://localhost:3005'); // Điều chỉnh địa chỉ máy chủ và cổng của bạn
+const socket = io.connect('http://localhost:3005'); // Điều chỉnh địa chỉ máy chủ và cổng của bạn
 var uploader = new SocketIOFileClient(socket);
 
 var zTree;
@@ -20,19 +20,21 @@ socket.on('nodeList', (data) => {
     // Sử dụng dữ liệu để cập nhật giao diện người dùng (ví dụ: hiển thị danh sách tệp ảnh)
     zNodes = data;
     console.log(data); // In dữ liệu lên console để kiểm tra
+    console.log('đây là id ws client'+socket.id)
     $.fn.zTree.init($("#treeDemo"), setting, zNodes);
 });
 
+
 uploader.on('start', function (fileInfo) {
-    console.log('Bắt đầu tải lên', fileInfo);
+    console.log(socket.id +' Bắt đầu tải lên', fileInfo);
 });
 
 uploader.on('stream', function (fileInfo) {
-    console.log('Đang tải lên... đã gửi %d byte.', fileInfo.sent);
+    console.log(socket.id +' Đang tải lên... đã gửi %d byte.', fileInfo.sent);
 });
 
 uploader.on('complete', function (fileInfo) {
-    console.log('Tải lên hoàn tất', fileInfo);
+    console.log(socket.id +' Tải lên hoàn tất', fileInfo);
 });
 
 uploader.on('error', function (err) {
@@ -55,56 +57,27 @@ function uploadFiles() {
         }
     });
 };
-// $('#pages').pagination({
-//     dataSource: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 35],
-//     pageSize: 10,
-//     autoHidePrevious: true,
-//     autoHideNext: true,
-//     totalNumberLocator: function(res) {
-//         return Math.floor(Math.random() * (1000 - 100)) + 100;
-//     },
-//     apterPageOnClick: function(event, pageNumber) {
-//         console.log(pageNumber);
-//     }
-// })
 
-// function loadPage(page){
-//     $('#image-box').html('');
-//     $.ajax({
-//         url: '/2023-10-5?page=' + page,
-//         method: 'GET',
-//         success: function(res){
-//             console.log(res);
-//             res.images.forEach(image => {
-//                 $('#image-box').append(`<img src="/${image}" alt="${image}" class="img-thumbnail">`);
-//             });
-//         },
-//         error: function(err){
-//             console.log(err);
-//         }
-//     });
-// }
-let today = new Date();
-let year = today.getFullYear();
-let month = today.getMonth() + 1; // getMonth() trả về từ 0 (tháng 1) đến 11 (tháng 12), nên cần cộng thêm 1
-let day = today.getDate();
-let formattedDate = `${year}/${month}/${day}`;
-formattedDate = "2023/10/5"
-$('#pagination-container').pagination({
-    dataSource: `/images/${formattedDate}`,
-    pageSize: 10,
-    locator: 'images',
-    autoHidePrevious: true,
-    autoHideNext: true,
-    totalNumberLocator: function (res) {
-        return res.total;
-    },
-    afterPageOnClick: function (event, pageNumber) {
-        loadData(pageNumber);
-    }
-});
-function loadData(page) {
-    $.get(`/images/${formattedDate}?page=${page}`, function (data) {
+
+function loadDataImages(dataSourceUrlImages) {
+    $('#pagination-container').pagination({
+        dataSource: `${dataSourceUrlImages}`,
+        pageSize: 10,
+        locator: 'images',
+        autoHidePrevious: true,
+        autoHideNext: true,
+        totalNumberLocator: function (res) {
+            return res.total;
+        },
+        afterPageOnClick: function (event, pageNumber) {
+            var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
+            loadDataPage(pageNumber, dataSourceUrlImages, fomatDate);
+        }
+    });
+};
+
+function loadDataPage(page, dataSourceUrlImages, formattedDate) {
+    $.get(`${dataSourceUrlImages}?page=${page}`, function (data) {
         let imagesContainer = $('#images-container');
         imagesContainer.empty();
         for (let i = 0; i < data.images.length; i++) {
@@ -120,11 +93,28 @@ function loadData(page) {
 
     });
 }
-
-loadData(1);
 function onTreeNodeClick(event, treeId, treeNode) {
     let path = treeNode.getPath();
     let formattedPath = path.map(node => node.name).join('/');
+    // loadDataImages('/'+formattedPath);
+    loadDataImages('/images/2023/10/9');
+    loadDataPage(1,'/images/2023/10/9','2023/10/9');
     console.log(formattedPath);
     console.log(path);
 }
+function initPageData(){
+    let today = new Date();
+    let year = today.getFullYear();
+    let month = today.getMonth() + 1; // getMonth() trả về từ 0 (tháng 1) đến 11 (tháng 12), nên cần cộng thêm 1
+    let day = today.getDate();
+    let formattedDate = `${year}/${month}/${day}`;
+    let dataSourceUrl = `/images/${formattedDate}`;
+
+    loadDataImages(dataSourceUrl);
+    loadDataPage(1,dataSourceUrl,formattedDate);
+};
+initPageData();
+$('#btn-search').on('click',(function(){
+    loadDataImages('/images/2023/10/5');
+    loadDataPage(1,'/images/2023/10/5','2023/10/5');
+}));

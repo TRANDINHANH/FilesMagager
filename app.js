@@ -9,20 +9,36 @@ const express = require('express');
 const port = 3005;
 
 function getDirectoryStructure(dirPath, nodeName) {
-    let structure = { name: nodeName, children: [] };
+    let structure = { name: nodeName, open: true, children: [] };
     let files = fs.readdirSync(dirPath);
+
+    // Lấy ngày hiện tại
+    let today = new Date();
+    let dirName = `file_uploads\\images`;
+    let formattedTodaydir = `${dirName}\\${today.getFullYear()}\\${today.getMonth() + 1}\\${today.getDate()}`;
+    let formattedYearNowdir = `${dirName}\\${today.getFullYear()}`;
+    let formattedYearAndMonthNowdir = `${dirName}\\${today.getFullYear()}\\${today.getMonth() + 1}`;
+    let link = `images/${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`
 
     files.forEach(file => {
         let fullPath = path.join(dirPath, file);
         let stats = fs.statSync(fullPath);
 
         if (stats.isDirectory()) {
-            structure.children.push(getDirectoryStructure(fullPath, file));
+            let childStructure = getDirectoryStructure(fullPath, file);
+
+            // Kiểm tra xem ngày hiện tại có trùng với ngày trong đường dẫn không
+            if (fullPath.localeCompare(formattedTodaydir)== 0 || fullPath.localeCompare(formattedYearNowdir)== 0 || fullPath.localeCompare(formattedYearAndMonthNowdir) == 0 ||fullPath.localeCompare(dirName) == 0) {
+                childStructure.open = true;               
+            }
+
+            structure.children.push(childStructure);
         }
     });
 
     return structure;
 }
+
 let treeStructure = getDirectoryStructure('./file_uploads/images', 'images');
 function saveTreeStructure() {
     fs.writeFile('./file_uploads/tree_node_list.json', JSON.stringify(treeStructure), 'utf8', (err) => {
@@ -105,7 +121,7 @@ app.get('/images/:year/:month/:day', (req, res) => {
 
 // Xử lý tải lên
 io.on('connection', (socket) => {
-    console.log('Socket connected.');
+    console.log('Socket connected. ' + socket.id);
     console.log(treeStructure);
     if (nodeList) {
         socket.emit('nodeList', nodeList);
@@ -120,16 +136,17 @@ io.on('connection', (socket) => {
     });
 
     uploader.on('start', (fileInfo) => {
-        console.log('Start uploading');
+        console.log('Start uploading ' + socket.id);
         console.log(fileInfo);
     });
 
     uploader.on('stream', (fileInfo) => {
-        console.log(`${fileInfo.wrote} / ${fileInfo.size} byte(s)`);
+        console.log(`${fileInfo.wrote} / ${fileInfo.size} byte(s) ` + socket.id);
     });
 
     uploader.on('complete', (fileInfo) => {
-        console.log('Upload Complete.');
+        console.log('Upload Complete.' + socket.id);        
+        
     });
 
     uploader.on('error', (err) => {
@@ -142,5 +159,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`Server is running on port http://locahost:${port}`);
 });
