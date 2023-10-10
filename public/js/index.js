@@ -35,6 +35,12 @@ uploader.on('stream', function (fileInfo) {
 
 uploader.on('complete', function (fileInfo) {
     console.log(socket.id +' Tải lên hoàn tất', fileInfo);
+    socket.emit('select-file', {
+        year: '2023',
+        month: '10',
+        day: '11',
+        pageNumber:'1'  
+    });
 });
 
 uploader.on('error', function (err) {
@@ -56,6 +62,7 @@ function uploadFiles() {
             upload_dir: (new Date()).getFullYear() + '/' + ((new Date()).getMonth() + 1) + '/' + (new Date()).getDate()
         }
     });
+    
 };
 
 
@@ -89,16 +96,50 @@ function loadDataPage(page, dataSourceUrlImages, formattedDate) {
                 <div class="image-thumbnail">${image}</div>
             </div>`);
         }
-
-
     });
+}
+function loadDataImages1(dataSourceImages) {
+    $('#pagination-container').pagination({
+        dataSource: `${dataSourceImages}`,
+        pageSize: 10,
+        locator: 'images',
+        autoHidePrevious: true,
+        autoHideNext: true,
+        totalNumber: dataSourceImages.total,
+        afterPageOnClick: function (event, pageNumber) {
+            socket.emit('select-file', {
+                year: '2023',
+                month: '10',
+                day: '10',
+                pageNumber:`${pageNumber}`  
+            });
+        }
+    });
+};
+
+function loadDataPage1(data) {
+    
+        let imagesContainer = $('#images-container');
+        imagesContainer.empty();
+        for (let i = 0; i < data.images.length; i++) {
+            const image = data.images[i];
+            imagesContainer.append(`<div class="file-box" id="image-box">
+                <div class="img-thumbnail-container">
+        <img src="/get-image/2023/10/11/${image}" alt="${image}" class="img-thumbnail">
+    </div>
+                <div class="image-thumbnail">${image}</div>
+            </div>`);
+        }
 }
 function onTreeNodeClick(event, treeId, treeNode) {
     let path = treeNode.getPath();
     let formattedPath = path.map(node => node.name).join('/');
     // loadDataImages('/'+formattedPath);
-    loadDataImages('/images/2023/10/9');
-    loadDataPage(1,'/images/2023/10/9','2023/10/9');
+    dataSourceUrlImages = '/'+formattedPath;
+    var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
+    loadDataImages(dataSourceUrlImages);
+    loadDataPage(1, dataSourceUrlImages, fomatDate);
+    
     console.log(formattedPath);
     console.log(path);
 }
@@ -115,6 +156,18 @@ function initPageData(){
 };
 initPageData();
 $('#btn-search').on('click',(function(){
-    loadDataImages('/images/2023/10/5');
-    loadDataPage(1,'/images/2023/10/5','2023/10/5');
+    // loadDataImages('/images/2023/10/5');
+    // loadDataPage(1,'/images/2023/10/5','2023/10/5');
+    socket.emit('select-file', {
+        year: '2023',
+        month: '10',
+        day: '11',
+        pageNumber:'1'  
+    });
 }));
+socket.on('select-file', (data) => { 
+    console.log(data);
+    loadDataImages1(data)
+    loadDataPage1(data);
+    $('#count-images').text('Tổng số: ' + data.total)
+});

@@ -1,6 +1,14 @@
 var app = require('express')();
 var server = require('http').Server(app);
-var io = require('socket.io')(server);
+var io = require('socket.io')(server,{
+    cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    transports: ['websocket', 'polling'],
+    credentials: true
+    },
+    allowEIO3: true
+    });
 var SocketIOFile = require('socket.io-file');
 const fs = require('fs');
 const path = require('path');
@@ -45,7 +53,7 @@ function saveTreeStructure() {
         if (err) {
             console.error('Lỗi khi ghi tệp JSON:', err);
         }
-    });
+    });    
 }
 const filePathTreeNode = './file_uploads/tree_node_list.json';
 
@@ -104,27 +112,41 @@ app.get('/images/:year/:month/:day', (req, res) => {
     });
 });
 
-// app.get('/get-image/:filename', (req, res) => {
-//     let imagePath = 'file_uploads/images/' + req.params.filename;
-//     readFile(imagePath, (err, data) => {
-//         if (err) {
-//             res.status(500).send('Lỗi khi đọc tệp ảnh');
-//             console.error(err);
-//             return;
-//         }
+function GetImages(year, month, day, pageNumber, callback) {
+    let dirPath = path.join('./file_uploads/images', year, month, day);
+    fs.readdir(dirPath, (err, files) => {
+        if (err) {
+            // Gọi callback với lỗi nếu có lỗi
+            callback(err, null);
+            return;
+        }
 
-//         res.writeHead(200, { 'Content-Type': 'image/jpeg, image/jpg, image/png, image/gif' });
-//         res.end(data);
-//     });
-// });
+        // Lọc ra các file ảnh
+        let imageFiles = files.filter(file => {
+            let fullPath = path.join(dirPath, file);
+            let stats = fs.statSync(fullPath);
+            return !stats.isDirectory() && ['.jpg', '.jpeg', '.png', '.gif'].includes(path.extname(file).toLowerCase());
+        });
 
+        // Phân trang
+        let page = parseInt(pageNumber) || 1;
+        let pageSize = 10;
+        let paginatedFiles = imageFiles.slice((page - 1) * pageSize, page * pageSize);
+
+        // Gọi callback với kết quả
+        callback(null, {
+            total: imageFiles.length,
+            images: paginatedFiles
+        });
+    });
+}
 
 // Xử lý tải lên
 io.on('connection', (socket) => {
     console.log('Socket connected. ' + socket.id);
     console.log(treeStructure);
     if (nodeList) {
-        socket.emit('nodeList', nodeList);
+        io.sockets.emit('nodeList', nodeList);
     }
     var uploader = new SocketIOFile(socket, {
         uploadDir: 'file_uploads/images/' + (new Date()).getFullYear() + '/' + ((new Date()).getMonth() + 1) + '/' + (new Date()).getDate(), // đường dẫn đến thư mục bạn muốn tải tệp lên
@@ -155,6 +177,25 @@ io.on('connection', (socket) => {
 
     uploader.on('abort', (fileInfo) => {
         console.log('Aborted: ', fileInfo);
+    });
+
+    socket.on('select-file', (data) => {
+        console.log('select-file: '+ data.year +data.month + data.day + data.pageNumber);    
+        console.log(GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
+            if (err) {
+                console.error('Lỗi:', err);
+            } else {
+                console.log('Kết quả:', result);
+                console.log('images:' ,result.images)
+            }
+        }));
+        GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
+            if (err) {
+                console.error('Lỗi:', err);
+            } else {
+                socket.emit('select-file', result);
+            }
+        }); 
     });
 });
 
