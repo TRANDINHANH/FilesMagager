@@ -13,6 +13,7 @@ var SocketIOFile = require('socket.io-file');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const cors = require('cors');
 
 const port = 3005;
 
@@ -74,7 +75,7 @@ fs.readFile(filePathTreeNode, 'utf8', (err, data) => {
 });
 
 
-
+app.use(cors());
 app.use(express.static('node_modules'));
 app.use(express.static('zTree_v3-master'));
 app.use(express.static('public'));
@@ -107,6 +108,29 @@ app.get('/images/:year/:month/:day', (req, res) => {
 
         res.json({
             total: imageFiles.length,
+            images: paginatedFiles
+        });
+    });
+});
+
+app.get('/search/:year/:month/:day', (req, res) => {
+    let imageName = req.query.name.toLowerCase();
+    let page = req.query.page ? parseInt(req.query.page) : 1;
+    let pageSize = 10;
+    let dirPath = path.join('./file_uploads/images', req.params.year, req.params.month, req.params.day);
+
+    fs.readdir(dirPath, (err, files) => {
+        if (err) {
+            res.status(500).send('Lỗi khi đọc thư mục');
+            return;
+        }
+
+        // let matchingFiles = files.filter(file => file.includes(imageName)); // Tìm kiếm có phân biệt chữ hoa chữ thường
+        let matchingFiles = files.filter(file => file.toLowerCase().includes(imageName));// Tìm kiếm không phân biệt chữ hoa chữ thường
+        let paginatedFiles = matchingFiles.slice((page - 1) * pageSize, page * pageSize);
+
+        res.json({
+            total: matchingFiles.length,
             images: paginatedFiles
         });
     });
@@ -157,38 +181,36 @@ io.on('connection', (socket) => {
         overwrite: true // ghi đè tệp nếu tên tệp đã tồn tại
     });
 
+    var uploadCount = 0; // Thêm biến để theo dõi số lượng tệp đang được tải lên
+
     uploader.on('start', (fileInfo) => {
         console.log('Start uploading ' + socket.id);
         console.log(fileInfo);
-    });
-
-    uploader.on('stream', (fileInfo) => {
-        console.log(`${fileInfo.wrote} / ${fileInfo.size} byte(s) ` + socket.id);
+        uploadCount++; // Tăng số lượng tệp đang được tải lên khi bắt đầu tải lên một tệp mới
     });
 
     uploader.on('complete', (fileInfo) => {
-        console.log('Upload Complete.' + socket.id);        
-        
+        console.log('Upload Complete.' + socket.id + ' ' + fileInfo.name);
+        uploadCount--; // Giảm số lượng tệp đang được tải lên khi hoàn tất tải lên một tệp
+
+        // Chỉ gửi sự kiện upload-complete khi không còn tệp nào đang được tải lên
+        if (uploadCount === 0) {
+            socket.emit('upload-complete');
+        }
     });
 
     uploader.on('error', (err) => {
         console.log('Error!', err);
+        uploadCount--; // Giảm số lượng tệp đang được tải lên nếu có lỗi khi tải lên một tệp
     });
 
     uploader.on('abort', (fileInfo) => {
         console.log('Aborted: ', fileInfo);
+        uploadCount--; // Giảm số lượng tệp đang được tải lên nếu hủy tải lên một tệp
     });
 
     socket.on('select-file', (data) => {
         console.log('select-file: '+ data.year +data.month + data.day + data.pageNumber);    
-        console.log(GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
-            if (err) {
-                console.error('Lỗi:', err);
-            } else {
-                console.log('Kết quả:', result);
-                console.log('images:' ,result.images)
-            }
-        }));
         GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
             if (err) {
                 console.error('Lỗi:', err);
@@ -200,5 +222,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(port, () => {
-    console.log(`Server is running on port http://locahost:${port}`);
+    console.log(`Server is running on port http://localhost:${port}`);
 });

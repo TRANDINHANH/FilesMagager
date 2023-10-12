@@ -14,13 +14,20 @@ var setting = {
     }
 };
 
+let todaycurrentVỉewGetInfo = new Date();
+let currentViewGetInfo = {
+    year: todaycurrentVỉewGetInfo.getFullYear(),
+    month: todaycurrentVỉewGetInfo.getMonth() + 1,
+    day: todaycurrentVỉewGetInfo.getDate(),
+    pageNumber:'1'  
+};
 
 // Lắng nghe sự kiện để nhận dữ liệu từ máy chủ (ví dụ: danh sách tệp ảnh)
 socket.on('nodeList', (data) => {
     // Sử dụng dữ liệu để cập nhật giao diện người dùng (ví dụ: hiển thị danh sách tệp ảnh)
     zNodes = data;
     console.log(data); // In dữ liệu lên console để kiểm tra
-    console.log('đây là id ws client'+socket.id)
+    console.log('đây là id ws client' + socket.id)
     $.fn.zTree.init($("#treeDemo"), setting, zNodes);
 });
 
@@ -35,12 +42,7 @@ uploader.on('stream', function (fileInfo) {
 
 uploader.on('complete', function (fileInfo) {
     console.log(socket.id +' Tải lên hoàn tất', fileInfo);
-    socket.emit('select-file', {
-        year: '2023',
-        month: '10',
-        day: '11',
-        pageNumber:'1'  
-    });
+    
 });
 
 uploader.on('error', function (err) {
@@ -79,6 +81,14 @@ function loadDataImages(dataSourceUrlImages) {
         afterPageOnClick: function (event, pageNumber) {
             var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
             loadDataPage(pageNumber, dataSourceUrlImages, fomatDate);
+        },
+        afterPreviousOnClick: function (event, pageNumber) {
+            var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
+            loadDataPage(pageNumber, dataSourceUrlImages, fomatDate);
+        },
+        afterNextOnClick: function (event, pageNumber) {
+            var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
+            loadDataPage(pageNumber, dataSourceUrlImages, fomatDate);
         }
     });
 };
@@ -113,7 +123,8 @@ function loadDataImages1(dataSourceImages) {
                 day: '10',
                 pageNumber:`${pageNumber}`  
             });
-        }
+        },
+
     });
 };
 
@@ -143,6 +154,7 @@ function onTreeNodeClick(event, treeId, treeNode) {
     console.log(formattedPath);
     console.log(path);
 }
+
 function initPageData(){
     let today = new Date();
     let year = today.getFullYear();
@@ -154,20 +166,79 @@ function initPageData(){
     loadDataImages(dataSourceUrl);
     loadDataPage(1,dataSourceUrl,formattedDate);
 };
+
+function loadTotalImages(data) {
+    if (data && data.total) {
+        $('#count-images').text('Tổng số: ' + data.total);
+    } else {
+        console.error('Data không hợp lệ');
+    }
+}
 initPageData();
-$('#btn-search').on('click',(function(){
-    // loadDataImages('/images/2023/10/5');
-    // loadDataPage(1,'/images/2023/10/5','2023/10/5');
-    socket.emit('select-file', {
-        year: '2023',
-        month: '10',
-        day: '11',
-        pageNumber:'1'  
-    });
-}));
+// $('#btn-search').on('click',(function(){
+//     // loadDataImages('/images/2023/10/5');
+//     // loadDataPage(1,'/images/2023/10/5','2023/10/5');
+//     socket.emit('select-file', {
+//         year: '2023',
+//         month: '10',
+//         day: '11',
+//         pageNumber:'1'  
+//     });
+// }));
 socket.on('select-file', (data) => { 
     console.log(data);
     loadDataImages1(data)
     loadDataPage1(data);
-    $('#count-images').text('Tổng số: ' + data.total)
+    loadTotalImages(data)
 });
+socket.on('upload-complete', () => { 
+    initPageData();
+});
+
+
+function loadDataSearchImages(dataSourceUrlImages, searchName) {
+    $('#pagination-container').pagination({
+        dataSource: `${dataSourceUrlImages}?name=${searchName}`,
+        pageSize: 10,
+        locator: 'images',
+        autoHidePrevious: true,
+        autoHideNext: true,
+        totalNumberLocator: function (res) {
+            return res.total;
+        },
+    });
+};
+function loadDataSearchPage(page, dataSourceUrlImages, formattedDate, searchName) {
+    $.get(`${dataSourceUrlImages}?page=${page}&name=${searchName}`, function (data) {
+        let imagesContainer = $('#images-container');
+        imagesContainer.empty();
+        for (let i = 0; i < data.images.length; i++) {
+            const image = data.images[i];
+            imagesContainer.append(`<div class="file-box" id="image-box">
+                <div class="img-thumbnail-container">
+        <img src="/get-image/${formattedDate}/${image}" alt="${image}" class="img-thumbnail">
+    </div>
+                <div class="image-thumbnail">${image}</div>
+            </div>`);
+        }
+    });
+}
+
+$('#btn-search').on('click', function() {
+    loadImagesSearch()
+});
+$('#search').on('keyup', function(e) {
+    if (e.keyCode === 13) {
+        loadImagesSearch()
+    }
+});
+function loadImagesSearch() {
+    let imageName = $('#search').val();
+    let today = new Date();
+    let year = today.getFullYear();
+    let month = today.getMonth() + 1;
+    let day = today.getDate();
+    let dataSourceUrl = `/search/${year}/${month}/${day}`;
+    loadDataSearchImages(dataSourceUrl, imageName);
+    loadDataSearchPage(1,dataSourceUrl,`${year}/${month}/${day}`,imageName);
+}
