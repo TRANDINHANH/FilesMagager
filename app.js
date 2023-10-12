@@ -195,7 +195,7 @@ io.on('connection', (socket) => {
 
         // Chỉ gửi sự kiện upload-complete khi không còn tệp nào đang được tải lên
         if (uploadCount === 0) {
-            socket.emit('upload-complete');
+            socket.emit('upload-complete',fileInfo);
         }
     });
 

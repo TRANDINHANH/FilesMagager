@@ -102,8 +102,9 @@ function loadDataPage(page, dataSourceUrlImages, formattedDate) {
             imagesContainer.append(`<div class="file-box" id="image-box">
                 <div class="img-thumbnail-container">
         <img src="/get-image/${formattedDate}/${image}" alt="${image}" class="img-thumbnail">
-    </div>
-                <div class="image-thumbnail">${image}</div>
+        <div class="image-thumbnail">${image}</div>
+        </div>
+                
             </div>`);
         }
     });
@@ -158,7 +159,7 @@ function onTreeNodeClick(event, treeId, treeNode) {
 function initPageData(){
     let today = new Date();
     let year = today.getFullYear();
-    let month = today.getMonth() + 1; // getMonth() trả về từ 0 (tháng 1) đến 11 (tháng 12), nên cần cộng thêm 1
+    let month = today.getMonth() + 1;
     let day = today.getDate();
     let formattedDate = `${year}/${month}/${day}`;
     let dataSourceUrl = `/images/${formattedDate}`;
@@ -191,8 +192,10 @@ socket.on('select-file', (data) => {
     loadDataPage1(data);
     loadTotalImages(data)
 });
-socket.on('upload-complete', () => { 
+socket.on('upload-complete', (data) => { 
     initPageData();
+    // loadTotalImages(data)
+    console.log(data);
 });
 
 
@@ -217,8 +220,8 @@ function loadDataSearchPage(page, dataSourceUrlImages, formattedDate, searchName
             imagesContainer.append(`<div class="file-box" id="image-box">
                 <div class="img-thumbnail-container">
         <img src="/get-image/${formattedDate}/${image}" alt="${image}" class="img-thumbnail">
+        <div class="image-thumbnail">${image}</div>
     </div>
-                <div class="image-thumbnail">${image}</div>
             </div>`);
         }
     });
