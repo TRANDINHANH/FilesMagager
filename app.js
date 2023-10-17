@@ -167,7 +167,7 @@ function GetImages(year, month, day, pageNumber, callback) {
 
 // Xử lý tải lên
 io.on('connection', (socket) => {
-    console.log('Socket connected. ' + socket.id);
+    console.log('Socket connected server. ' + socket.id);
     console.log(treeStructure);
     if (nodeList) {
         io.sockets.emit('nodeList', nodeList);
@@ -209,15 +209,25 @@ io.on('connection', (socket) => {
         uploadCount--; // Giảm số lượng tệp đang được tải lên nếu hủy tải lên một tệp
     });
 
-    socket.on('select-file', (data) => {
-        console.log('select-file: '+ data.year +data.month + data.day + data.pageNumber);    
-        GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
-            if (err) {
-                console.error('Lỗi:', err);
-            } else {
-                socket.emit('select-file', result);
-            }
-        }); 
+    // socket.on('select-file', (data) => {
+    //     console.log('select-file: '+ data.year +data.month + data.day + data.pageNumber);    
+    //     GetImages(data.year, data.month, data.day, data.pageNumber, (err, result) => {
+    //         if (err) {
+    //             console.error('Lỗi:', err);
+    //         } else {
+    //             socket.emit('select-file', result);
+    //         }
+    //     }); 
+    // });
+    
+    socket.on('primary-clientId', (soketID) => {
+        console.log('primary-clientId: '+ soketID);
+        socket.join(soketID);
+        socket.on('get-image-to-primary', (data) => {
+            console.log('hello: '+ socket.id + data);
+            console.log('hello: '+ soketID);
+            io.to(soketID).emit('get-image-to-primary', data);
+        });
     });
 });
 

@@ -1,4 +1,5 @@
-const socket = io.connect('http://localhost:3005'); // Điều chỉnh địa chỉ máy chủ và cổng của bạn
+const domain = 'http://localhost:3005';
+const socket = io.connect(domain); // Điều chỉnh địa chỉ máy chủ và cổng của bạn
 var uploader = new SocketIOFileClient(socket);
 
 var zTree;
@@ -21,16 +22,23 @@ let currentViewGetInfo = {
     day: todaycurrentVỉewGetInfo.getDate(),
     pageNumber:'1'  
 };
+let chooseDateForSearch = null;
 
 // Lắng nghe sự kiện để nhận dữ liệu từ máy chủ (ví dụ: danh sách tệp ảnh)
 socket.on('nodeList', (data) => {
     // Sử dụng dữ liệu để cập nhật giao diện người dùng (ví dụ: hiển thị danh sách tệp ảnh)
     zNodes = data;
     console.log(data); // In dữ liệu lên console để kiểm tra
-    console.log('đây là id ws client' + socket.id)
     $.fn.zTree.init($("#treeDemo"), setting, zNodes);
 });
 
+socket.on('connect', () => {
+    // Lấy socket.id của client
+    const clientId = socket.id;
+    const primaryClientId = sessionStorage.getItem('clientId');
+    socket.emit('primary-clientId', primaryClientId);
+    console.log('Socket session ID của primaru client là:', primaryClientId);
+});
 
 uploader.on('start', function (fileInfo) {
     console.log(socket.id +' Bắt đầu tải lên', fileInfo);
@@ -101,7 +109,7 @@ function loadDataPage(page, dataSourceUrlImages, formattedDate) {
             const image = data.images[i];
             imagesContainer.append(`<div class="file-box" id="image-box">
                 <div class="img-thumbnail-container">
-        <img src="/get-image/${formattedDate}/${image}" alt="${image}" class="img-thumbnail">
+        <img src="${domain}/get-image/${formattedDate}/${image}" alt="${image}" onclick="getImageToClient(event)" id="/get-image/${formattedDate}/${image}" class="img-thumbnail">
         <div class="image-thumbnail">${image}</div>
         </div>
                 
@@ -109,50 +117,50 @@ function loadDataPage(page, dataSourceUrlImages, formattedDate) {
         }
     });
 }
-function loadDataImages1(dataSourceImages) {
-    $('#pagination-container').pagination({
-        dataSource: `${dataSourceImages}`,
-        pageSize: 10,
-        locator: 'images',
-        autoHidePrevious: true,
-        autoHideNext: true,
-        totalNumber: dataSourceImages.total,
-        afterPageOnClick: function (event, pageNumber) {
-            socket.emit('select-file', {
-                year: '2023',
-                month: '10',
-                day: '10',
-                pageNumber:`${pageNumber}`  
-            });
-        },
+// function loadDataImages1(dataSourceImages) {
+//     $('#pagination-container').pagination({
+//         dataSource: `${dataSourceImages}`,
+//         pageSize: 10,
+//         locator: 'images',
+//         autoHidePrevious: true,
+//         autoHideNext: true,
+//         totalNumber: dataSourceImages.total,
+//         afterPageOnClick: function (event, pageNumber) {
+//             socket.emit('select-file', {
+//                 year: '2023',
+//                 month: '10',
+//                 day: '10',
+//                 pageNumber:`${pageNumber}`  
+//             });
+//         },
 
-    });
-};
+//     });
+// };
 
-function loadDataPage1(data) {
+// function loadDataPage1(data) {
     
-        let imagesContainer = $('#images-container');
-        imagesContainer.empty();
-        for (let i = 0; i < data.images.length; i++) {
-            const image = data.images[i];
-            imagesContainer.append(`<div class="file-box" id="image-box">
-                <div class="img-thumbnail-container">
-        <img src="/get-image/2023/10/11/${image}" alt="${image}" class="img-thumbnail">
-    </div>
-                <div class="image-thumbnail">${image}</div>
-            </div>`);
-        }
-}
+//         let imagesContainer = $('#images-container');
+//         imagesContainer.empty();
+//         for (let i = 0; i < data.images.length; i++) {
+//             const image = data.images[i];
+//             imagesContainer.append(`<div class="file-box" id="image-box">
+//                 <div class="img-thumbnail-container">
+//         <img src="/get-image/2023/10/11/${image}" alt="${image}" onclick="getImageToClient()" id="/get-image/${formattedDate}/${image}" class="img-thumbnail">
+//     </div>
+//                 <div class="image-thumbnail">${image}</div>
+//             </div>`);
+//         }
+// }
 function onTreeNodeClick(event, treeId, treeNode) {
     let path = treeNode.getPath();
     let formattedPath = path.map(node => node.name).join('/');
     // loadDataImages('/'+formattedPath);
     dataSourceUrlImages = '/'+formattedPath;
     var fomatDate = dataSourceUrlImages.split('/').slice(-3).join('/');
-    loadDataImages(dataSourceUrlImages);
-    loadDataPage(1, dataSourceUrlImages, fomatDate);
-    
-    console.log(formattedPath);
+    loadDataImages(domain + dataSourceUrlImages);
+    loadDataPage(1,domain + dataSourceUrlImages, fomatDate);
+    chooseDateForSearch = formattedPath;
+    console.log('ngày chọn '+formattedPath);
     console.log(path);
 }
 
@@ -162,7 +170,7 @@ function initPageData(){
     let month = today.getMonth() + 1;
     let day = today.getDate();
     let formattedDate = `${year}/${month}/${day}`;
-    let dataSourceUrl = `/images/${formattedDate}`;
+    let dataSourceUrl = `${domain}/images/${formattedDate}`;
 
     loadDataImages(dataSourceUrl);
     loadDataPage(1,dataSourceUrl,formattedDate);
@@ -186,12 +194,12 @@ initPageData();
 //         pageNumber:'1'  
 //     });
 // }));
-socket.on('select-file', (data) => { 
-    console.log(data);
-    loadDataImages1(data)
-    loadDataPage1(data);
-    loadTotalImages(data)
-});
+// socket.on('select-file', (data) => { 
+//     console.log(data);
+//     loadDataImages1(data)
+//     loadDataPage1(data);
+//     loadTotalImages(data)
+// });
 socket.on('upload-complete', (data) => { 
     initPageData();
     // loadTotalImages(data)
@@ -219,7 +227,7 @@ function loadDataSearchPage(page, dataSourceUrlImages, formattedDate, searchName
             const image = data.images[i];
             imagesContainer.append(`<div class="file-box" id="image-box">
                 <div class="img-thumbnail-container">
-        <img src="/get-image/${formattedDate}/${image}" alt="${image}" class="img-thumbnail">
+        <img src="${domain}/get-image/${formattedDate}/${image}" alt="${image}" onclick="getImageToClient(event)" id="/get-image/${formattedDate}/${image}" class="img-thumbnail">
         <div class="image-thumbnail">${image}</div>
     </div>
             </div>`);
@@ -228,20 +236,29 @@ function loadDataSearchPage(page, dataSourceUrlImages, formattedDate, searchName
 }
 
 $('#btn-search').on('click', function() {
-    loadImagesSearch()
+    loadImagesSearch(chooseDateForSearch)
 });
 $('#search').on('keyup', function(e) {
     if (e.keyCode === 13) {
-        loadImagesSearch()
+        loadImagesSearch(chooseDateForSearch)
     }
 });
-function loadImagesSearch() {
+function loadImagesSearch(date) {
     let imageName = $('#search').val();
     let today = new Date();
     let year = today.getFullYear();
     let month = today.getMonth() + 1;
     let day = today.getDate();
-    let dataSourceUrl = `/search/${year}/${month}/${day}`;
+    let dataSourceUrl = `${domain}/search/${year}/${month}/${day}`;
+    if(date != null || date != undefined || date != ''){
+        dataSourceUrl = `${domain}/search/${year}/${month}/${day}`;
+    }
     loadDataSearchImages(dataSourceUrl, imageName);
     loadDataSearchPage(1,dataSourceUrl,`${year}/${month}/${day}`,imageName);
+}
+
+function getImageToClient(event) {
+    let imgSrc = event.target.src;
+    console.log(imgSrc);
+    socket.emit('get-image-to-primary', imgSrc);
 }
